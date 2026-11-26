@@ -25,7 +25,7 @@ await page.goto('http://127.0.0.1:4173');
 await page.waitForFunction(() => window.studio);
 
 const templates = {
-  fiction: ['f-00108', 'f-00110', 'f-00106', 'f-00109', 'f-00112', 'f-00111', 'f-00105'],
+  fiction: ['f-00108', 'f-00110', 'f-00109', 'f-00112', 'f-00105'],
   cleaner: ['c-00176', 'c-00175', 'c-00173', 'c-00122-1', 'c-00112', 'c-00122-5', 'c-00101']
 };
 async function openTemplate() {

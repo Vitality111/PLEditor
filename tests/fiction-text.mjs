@@ -9,7 +9,7 @@ const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 await page.goto('http://127.0.0.1:4173');
 await page.waitForFunction(() => window.studio);
-const ids = ['f-00108', 'f-00110', 'f-00106', 'f-00109', 'f-00112', 'f-00111', 'f-00105'];
+const ids = ['f-00108', 'f-00110', 'f-00109', 'f-00112', 'f-00105'];
 for (const id of ids) {
   if (await page.locator('#editor').isVisible()) await page.locator('#newProject').click();
   await page.locator('[data-picker-product="fiction"]').click();

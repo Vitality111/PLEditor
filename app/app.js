@@ -29,6 +29,7 @@ import { scopedAssets, slotAssets } from './asset-scope.js';
 import { createAssetLoader } from './asset-loader.js';
 import { forgetBrowserCopies, saveLast, loadLast } from './storage.js';
 import { startTour, tourSeen, tourActive } from './tour.js';
+import { combo, altKey } from './keys.js';
 import { layoutFailures, failureLabels } from './layout-checks.js';
 import {
   ensureSet,
@@ -189,13 +190,11 @@ const LEGACY_TEMPLATES = [
 const ORIGINALS = [
   { id: 'f-00108', product: 'fiction', title: 'Обкладинка · Chapter', reference: '0012 → 00108' },
   { id: 'f-00110', product: 'fiction', title: 'Обкладинка з назвою', reference: '0007 → 00110' },
-  { id: 'f-00106', product: 'fiction', title: 'Обкладинка · POV', reference: '0029 → 00106' },
   { id: 'f-00109', product: 'fiction', title: 'Інфо-картка', reference: '0015 → 00109' },
   { id: 'f-00112', product: 'fiction', title: 'Книжкова сторінка', reference: '0016 → 00112' },
-  { id: 'f-00111', product: 'fiction', title: 'Сторінка · червона кнопка', reference: '0051 → 00111' },
   { id: 'f-00105', product: 'fiction', title: 'Текст на панелі', reference: '0056 → 00105' },
   { id: 'c-00176', product: 'cleaner', title: 'Текстовий банер', reference: '0048 → 00176' },
-  { id: 'c-00175', product: 'cleaner', title: 'Текст і кроки', reference: '0038 → 00175' },
+  { id: 'c-00175', product: 'cleaner', title: 'Текст + картинка', reference: '0038 → 00175' },
   { id: 'c-00173', product: 'cleaner', title: 'Бульбашка', reference: '0083 → 00173' },
   { id: 'c-00122-1', product: 'cleaner', title: 'Алерт · Yes / Later', reference: '00122_1' },
   { id: 'c-00112', product: 'cleaner', title: 'Алерт із таймером', reference: '00112_3' },
@@ -1194,9 +1193,9 @@ function richField(label, key, b, rows, hint = '') {
   return field(
     label,
     `<div class="rich-tools" role="toolbar" aria-label="Форматування виділеного тексту">` +
-      `<button type="button" class="rich-btn" data-rich-cmd="bold" data-rich-for="${key}" title="Жирний (Cmd/Ctrl+B)" aria-label="Жирний"><b>Ж</b></button>` +
-      `<button type="button" class="rich-btn" data-rich-cmd="italic" data-rich-for="${key}" title="Курсив (Cmd/Ctrl+I)" aria-label="Курсив"><i>К</i></button>` +
-      `<button type="button" class="rich-btn" data-rich-cmd="underline" data-rich-for="${key}" title="Підкреслений (Cmd/Ctrl+U)" aria-label="Підкреслений"><u>П</u></button>` +
+      `<button type="button" class="rich-btn" data-rich-cmd="bold" data-rich-for="${key}" title="Жирний (${combo('mod', 'B')})" aria-label="Жирний"><b>Ж</b></button>` +
+      `<button type="button" class="rich-btn" data-rich-cmd="italic" data-rich-for="${key}" title="Курсив (${combo('mod', 'I')})" aria-label="Курсив"><i>К</i></button>` +
+      `<button type="button" class="rich-btn" data-rich-cmd="underline" data-rich-for="${key}" title="Підкреслений (${combo('mod', 'U')})" aria-label="Підкреслений"><u>П</u></button>` +
       `<select class="rich-font" data-rich-font="${key}" aria-label="Шрифт виділеного тексту" title="Шрифт виділеного тексту">${RICH_FONTS()
         .map(([v, l]) => `<option value="${esc(v)}">${esc(l)}</option>`)
         .join('')}</select>` +
@@ -1855,7 +1854,7 @@ function renderInspector() {
           '<button class="btn secondary" id="listen">Прослухати / зупинити</button>';
       if (b.type !== 'audio')
         s +=
-          `<div class="divider"></div><h4>Позиція · ${orientation === 'portrait' ? 'портрет' : 'ландшафт'}</h4><p class="muted">Зсув від базової позиції. Увімкни «Рухати і розтягувати», щоб перетягнути елемент у preview. Рожеві напрямні показують вирівнювання. Alt — без прив’язки.</p>` +
+          `<div class="divider"></div><h4>Позиція · ${orientation === 'portrait' ? 'портрет' : 'ландшафт'}</h4><p class="muted">Зсув від базової позиції. Увімкни «Рухати і розтягувати», щоб перетягнути елемент у preview. Рожеві напрямні показують вирівнювання. Затисни ${altKey} — без прив’язки.</p>` +
           field(
             'X · горизонталь',
             range(
@@ -1972,7 +1971,7 @@ const editorTourSteps = () => [
   {
     target: '#screenshot',
     title: 'Скріншот',
-    text: 'PNG екрана для борду. Заодно копіюється в буфер — просто встав.',
+    text: `PNG екрана для борди у Figma. Заодно копіюється в буфер — просто встав у Figma (${combo('mod', 'V')}).`,
     place: 'top'
   },
   {
@@ -2040,6 +2039,10 @@ function tourAfterOpen() {
   }, 600);
 }
 $('#tourBtn').addEventListener('click', runTour);
+// Shortcut hints on the buttons in the keys of this computer.
+$('#undo').title = `Скасувати (${combo('mod', 'Z')})`;
+$('#redo').title = `Повторити (${combo('mod', 'shift', 'Z')})`;
+$('#screenshot').title = `PNG екрана креативу (2×): файл завантажиться і скопіюється — встав у борду в Figma (${combo('mod', 'V')})`;
 function useProject(p) {
   if (p.kind === 'html') {
     addTextGroups(p);
@@ -2185,7 +2188,7 @@ function screenshot() {
       const scr = screenPixels().join('x'),
         name = `${fileName(project).replace(/\.html$/i, '')}_${orientation === 'landscape' ? 'land' : 'port'}_${scr}.png`;
       download(blob, name, 'image/png');
-      toast(ok ? 'Скріншот завантажено і скопійовано — встав у борду (Cmd/Ctrl+V).' : 'Скріншот завантажено: ' + name);
+      toast(ok ? `Скріншот завантажено і скопійовано — встав у борду в Figma (${combo('mod', 'V')}).` : 'Скріншот завантажено: ' + name);
     })
     .catch(e => toast('Скріншот не вдався: ' + e.message))
     .finally(() => {

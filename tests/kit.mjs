@@ -18,7 +18,7 @@ await page.locator('[data-picker-product="fiction"]').click();
 assert.ok(await page.locator('#importPlayable').isVisible(), 'upload card on the template step');
 assert.deepEqual(
   await page.locator('[data-choose]').evaluateAll(es => es.map(e => e.dataset.choose)),
-  ['f-00108', 'f-00110', 'f-00106', 'f-00109', 'f-00112', 'f-00111', 'f-00105']
+  ['f-00108', 'f-00110', 'f-00109', 'f-00112', 'f-00105']
 );
 await page.screenshot({ path: 'test-results/start-templates.png' });
 await page.locator('#chooserBack').click();

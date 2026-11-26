@@ -687,7 +687,7 @@ function runtime(config) {
           ' · Y ' +
           Math.round(r.top + dy) +
           (snap.guides.length ? ' · Вирівняно' : '') +
-          ' · Alt: без прив’язки'
+          (/mac|iphone|ipad/i.test(navigator.platform || navigator.userAgent) ? ' · ⌥: без прив’язки' : ' · Alt: без прив’язки')
       );
     }
     function finishMove(e) {
