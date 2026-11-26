@@ -14,7 +14,7 @@ let failed =
     : [];
 
 // Every suite gets its own fresh server, like a first start (PB keeps nothing between runs anyway).
-for (const suite of ['browser', 'interaction', 'rulers', 'variations', 'kit', 'html-import', 'no-storage', 'play', 'fiction-text', 'elements', 'resize', 'ui-contrast', 'fonts', 'rich-text', 'screenshot', 'last-creative', 'anchor', 'music', 'store-links', 'landscape-picture', 'audit', 'fuzz']) {
+for (const suite of ['browser', 'interaction', 'rulers', 'variations', 'kit', 'html-import', 'no-storage', 'play', 'fiction-text', 'elements', 'resize', 'ui-contrast', 'fonts', 'rich-text', 'screenshot', 'last-creative', 'anchor', 'music', 'store-links', 'landscape-picture', 'cta-weight', 'tour', 'audit', 'fuzz']) {
   const server = spawn(process.execPath, ['server.mjs'], { stdio: 'ignore' });
   await new Promise(r => setTimeout(r, 800));
   try {

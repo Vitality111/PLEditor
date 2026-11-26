@@ -28,6 +28,7 @@ import { buildHTML, escapeHTML as esc, playableHTML } from './engine.js';
 import { scopedAssets, slotAssets } from './asset-scope.js';
 import { createAssetLoader } from './asset-loader.js';
 import { forgetBrowserCopies, saveLast, loadLast } from './storage.js';
+import { startTour, tourSeen, tourActive } from './tour.js';
 import { layoutFailures, failureLabels } from './layout-checks.js';
 import {
   ensureSet,
@@ -1139,7 +1140,9 @@ function visibilityControl(b) {
       '<div class="section-label">Показувати</div>' +
       box('portrait', 'У портреті') +
       box('landscape', 'У ландшафті') +
-      (!shown('portrait') && !shown('landscape') ? '<small class="muted">Елемент приховано в обох орієнтаціях.</small>' : '')
+      (!shown('portrait') && !shown('landscape')
+        ? '<small class="muted">Приховано в обох орієнтаціях — ' + (b.type === 'image' ? 'картинка не потрапить у файл, він стане легшим.' : 'у файлі елемента не видно.') + '</small>'
+        : '')
     );
   }
   return (
@@ -1911,6 +1914,132 @@ function renderInspector() {
   $('#inspectorBody').scrollTop = 0;
   updateFileNames();
 }
+// ---------- Tutorial ----------
+// Editor steps; on the start screen the first step asks to open a creative and the rest follow then.
+let tourPending = false;
+const editorTourSteps = () => [
+  {
+    target: null,
+    title: 'Привіт! Це PB',
+    text: 'За хвилину покажу головне. Гортай кнопкою «Далі» або стрілками ← →. Esc — пропустити.'
+  },
+  {
+    target: '#libraryBody',
+    title: 'Елементи креативу',
+    text: 'Усе, з чого складається креатив: картинки, текст, кнопка, музика. Клік — відкрити налаштування. Нижче — файли креативу.',
+    place: 'right'
+  },
+  {
+    target: '#deviceShell',
+    title: 'Preview',
+    text: 'Клік по елементу тут теж його вибирає. Ще клік у те саме місце — елемент під ним.',
+    place: 'right'
+  },
+  {
+    target: '.inspector',
+    title: 'Налаштування елемента',
+    text: 'Текст (жирний, курсив, шрифт), картинка, розмір, показ у портреті й ландшафті, «Клік відкриває магазин» для своєї кнопки.',
+    place: 'left',
+    before: () => $('[data-inspector="element"]')?.click()
+  },
+  {
+    target: '#editPositions',
+    title: 'Рухати і розтягувати',
+    text: 'Увімкни — і тягни елемент або квадратики по краях, як у Figma.',
+    place: 'top'
+  },
+  {
+    target: '.add-section',
+    title: '+ Додати елемент',
+    text: 'Свій текст або картинку. Вони чіпляються до сусіднього елемента й не з’їжджають на інших екранах.',
+    place: 'right'
+  },
+  {
+    target: ['#portrait', '#landscape'],
+    title: 'Портрет і ландшафт',
+    text: 'Кожна орієнтація налаштовується окремо: позиції, розміри, що показувати.'
+  },
+  {
+    target: '#device',
+    title: 'Розмір екрана',
+    text: 'Перевір, як креатив виглядає на різних телефонах — від маленьких до великих.'
+  },
+  {
+    target: '#modePlay',
+    title: 'Тест',
+    text: 'Креатив оживає як у рекламі: анімації, музика, тап по кнопці. Повернутись — «Редагувати».'
+  },
+  {
+    target: '#screenshot',
+    title: 'Скріншот',
+    text: 'PNG екрана для борду. Заодно копіюється в буфер — просто встав.',
+    place: 'top'
+  },
+  {
+    target: '#addVariant',
+    title: 'Варіації',
+    text: '«+ Варіація» — копія креативу для варіацій 2 і 3: заміни картинки чи текст.'
+  },
+  {
+    target: '.inspector',
+    title: 'Вкладка «Експорт»',
+    text: 'Номер креативу, назва файла й посилання на магазин (App Store, Google Play).',
+    place: 'left',
+    before: () => $('[data-inspector="settings"]')?.click()
+  },
+  {
+    target: '#export',
+    title: 'Експорт HTML',
+    text: 'Готовий файл для рекламної мережі. Його можна відкрити в PB знову через «Свій плейбл» — усі правки на місці.',
+    before: () => $('[data-inspector="element"]')?.click()
+  },
+  {
+    target: '#tourBtn',
+    title: 'Ось і все',
+    text: 'Цей гайд завжди тут — натисни, щоб пройти ще раз. Вдалої роботи!'
+  }
+];
+// While the tour runs, the creative in the preview stands still (blinking alerts, pulsing buttons
+// would distract from the text of the tour).
+function pausePreview(on) {
+  try {
+    const d = $('#preview').contentDocument;
+    if (!d?.head) return;
+    let st = d.getElementById('tour-pause');
+    if (on && !st) {
+      st = d.createElement('style');
+      st.id = 'tour-pause';
+      st.textContent = '*,*::before,*::after{animation-play-state:paused!important;transition:none!important}';
+      d.head.append(st);
+    } else if (!on) st?.remove();
+  } catch {}
+}
+function startEditorTour() {
+  tourPending = false;
+  startTour(editorTourSteps(), { onStep: () => pausePreview(true), onEnd: () => pausePreview(false) });
+}
+function runTour() {
+  if (!$('#chooser').hidden) {
+    // Nothing open yet: the tour shows the editor on a calm Fiction Me creative.
+    tourPending = true;
+    chooserMode = 'new';
+    chooserProduct = 'fiction';
+    chooseComposition('f-00108');
+    return;
+  }
+  startEditorTour();
+}
+// After a creative opens: the pending tour (or the very first visit) starts once the preview is there.
+function tourAfterOpen() {
+  if (tourActive() || $('#editor').hidden) return;
+  // The first-visit tour is for people; automated checks (webdriver) only get it from the button.
+  if (!tourPending && (tourSeen() || navigator.webdriver)) return;
+  tourPending = false;
+  setTimeout(() => {
+    if (!tourActive() && !$('#editor').hidden) startEditorTour();
+  }, 600);
+}
+$('#tourBtn').addEventListener('click', runTour);
 function useProject(p) {
   if (p.kind === 'html') {
     addTextGroups(p);
@@ -2384,6 +2513,7 @@ function normalizeProject(raw) {
       n.added = b.added === true;
       n.bgAsset = b.bgAsset === true;
       if (b.audioAsset === true) n.audioAsset = true;
+      if (b.cta === true) n.cta = true;
       if (b.landscapeOwn === true) n.landscapeOwn = true;
       const rich = sanitizeRich(b.rich);
       if (rich) n.rich = rich;
@@ -2733,7 +2863,7 @@ document.addEventListener('input', e => {
   }
   changed();
   refresh({
-    inspector: path === 'block.enabled' || path === 'block.addedStyle.plate' || path === 'block.font',
+    inspector: path === 'block.enabled' || path === 'block.addedStyle.plate' || path === 'block.font' || path === 'block.cta',
     library: path === 'block.enabled'
   });
 });
@@ -3301,6 +3431,7 @@ addEventListener('message', e => {
     $('#retryPreview').hidden = false;
   }
   if (e.data?.type === 'preview-ready' && e.data.token === previewRevision) {
+    if (project.kind === 'html' && !placeholderId) tourAfterOpen();
     loadedSignature = pendingSignature;
     $('#previewState').hidden = true;
     $('#preview').contentWindow.postMessage({ type: 'set-scroll', value: scroll }, location.origin);
@@ -3533,7 +3664,7 @@ function renderHTMLInspector() {
       esc(b.label || 'Музика') +
       '</h3>' +
       toggle('Музика грає', 'block.enabled', b.enabled) +
-      '<small class="muted">Вимкни — і в креативі буде тиша (скрипт креативу не ламається).</small>' +
+      '<small class="muted">Вимкни — і в креативі буде тиша, а файл музики не потрапить в експорт (він стане легшим). Скрипт креативу не ламається.</small>' +
       (a ? `<audio class="audio-preview" controls preload="none" src="${esc(a.data || a.url || '')}"></audio>` : '') +
       assetField('Файл музики', 'block.asset', b.asset, 'audio') +
       (b.asset !== b.originalAsset
@@ -3562,6 +3693,13 @@ function renderHTMLInspector() {
     const font = fontEl ? parseFloat(fontEl.ownerDocument.defaultView.getComputedStyle(fontEl).fontSize) : 20;
     const anchored = !!(b.added && b.anchor?.[o]?.node);
     s = '<h3>' + esc(b.label || LABELS[b.type]) + '</h3>' + visibilityControl(b);
+    // Any picture or text can act as the CTA: a tap opens the store, like the creative's own button.
+    if (!b.bgAsset && !b.storyGroup && !b.textGroup && ['image', 'text'].includes(b.type))
+      s +=
+        toggle('Клік відкриває магазин (CTA)', 'block.cta', !!b.cta) +
+        (b.cta
+          ? '<small class="muted">У файлі тап по елементу відкриє магазин — так само, як кнопка креативу (посилання — у вкладці «Експорт»). Перевір у режимі «Тест».</small>'
+          : '');
     if (b.storyGroup) s += storyPartsFields(b, o);
     if (b.type === 'text' && !b.storyGroup)
       s +=
@@ -4156,6 +4294,7 @@ async function importPlayable(file, opts = {}) {
           if (old.ctaCode && typeof old.ctaCode === 'object') b.ctaCode = clone(old.ctaCode);
           if (old.anchor && typeof old.anchor === 'object') b.anchor = clone(old.anchor);
           if (old.hide && typeof old.hide === 'object') b.hide = clone(old.hide);
+          if (old.cta === true) b.cta = true;
         }
       }
     // Elements added in PB (pictures, texts), with their place and anchor.

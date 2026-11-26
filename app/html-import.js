@@ -223,7 +223,7 @@ export function importHTMLDocument(html, name, assetNames = {}) {
   doc.querySelector('#playable-studio-state')?.remove();
   doc.querySelector('#studio-import-overrides')?.remove();
   // Elements added in PB come back from the saved edit data, not as part of the creative.
-  for (const el of doc.querySelectorAll('.studio-added,#pb-anchor-runtime,#pb-store-links')) el.remove();
+  for (const el of doc.querySelectorAll('.studio-added,#pb-anchor-runtime,#pb-store-links,#pb-cta-runtime')) el.remove();
   for (const el of doc.querySelectorAll('[data-import-base-translate]')) {
     el.style.setProperty('translate', el.getAttribute('data-import-base-translate'), 'important');
     el.removeAttribute('data-import-base-translate');
@@ -576,6 +576,19 @@ export function importedDocument(project, assets, { positionCSS, preview = false
     else if (b.asset && b.asset !== b.originalAsset && assets[b.asset])
       html = html.split(token(b.originalAsset)).join(token(b.asset));
   }
+  // Pictures hidden in both orientations do not go into the file at all (a weightless placeholder of
+  // the same proportions keeps the layout), unless a shown element still uses the same file.
+  const hiddenFiles = new Set();
+  if (!preview) {
+    const shown = new Set(
+      project.blocks.filter(b => b.enabled).flatMap(b => [b.asset, b.assetL, b.originalAsset]).filter(Boolean)
+    );
+    for (const b of project.blocks)
+      if (!b.enabled && b.type === 'image')
+        for (const id of [b.asset, b.assetL, b.originalAsset])
+          if (id && !shown.has(id) && assets[id]?.type === 'image') hiddenFiles.add(id);
+    for (const id of hiddenFiles) html = html.split(token(id)).join(placeholderFor(assets[id]));
+  }
   for (const [id, a] of Object.entries(assets)) html = html.split(token(id)).join(a.data || a.url || '');
   const doc = parser(html);
   doc.title = project.name;
@@ -603,6 +616,7 @@ export function importedDocument(project, assets, { positionCSS, preview = false
     // A picture without a file yet: a placeholder in the editor, nothing in the export.
     const empty = b.type === 'image' && !assets[b.asset];
     if (empty && !preview) continue;
+    if (!b.enabled && !preview) continue; // hidden everywhere: not in the file
     const el = doc.createElement(b.type === 'image' && !empty ? 'img' : 'div');
     el.className = 'studio-added' + (empty ? ' studio-added-empty' : '');
     el.setAttribute('data-import-node', b.node);
@@ -625,6 +639,7 @@ export function importedDocument(project, assets, { positionCSS, preview = false
     );
     if (!el) continue;
     el.setAttribute('data-studio-block', b.id);
+    if (b.cta && b.enabled) el.setAttribute('data-pb-cta', '');
     if (!b.added) {
       const anchor = anchorAttr(b, project);
       if (anchor) el.setAttribute('data-pb-anchor', anchor);
@@ -677,7 +692,11 @@ export function importedDocument(project, assets, { positionCSS, preview = false
       el.replaceWith(pic);
       pic.append(src, el);
     }
-    if (b.type === 'image' && !b.bgAsset && assets[b.asset]) {
+    if (b.type === 'image' && !b.bgAsset && assets[b.asset] && hiddenFiles.has(b.asset)) {
+      el.setAttribute('src', placeholderFor(assets[b.asset]));
+      if (el.parentElement?.tagName === 'PICTURE')
+        for (const src of el.parentElement.querySelectorAll('source')) src.setAttribute('srcset', placeholderFor(assets[b.asset]));
+    } else if (b.type === 'image' && !b.bgAsset && assets[b.asset]) {
       el.setAttribute('src', assets[b.asset].data || assets[b.asset].url);
       if (el.parentElement.tagName === 'PICTURE')
         for (const src of el.parentElement.querySelectorAll('source'))
@@ -779,6 +798,7 @@ export function importedDocument(project, assets, { positionCSS, preview = false
     const sel = `[data-studio-block="${b.id}"],[data-studio-font~="${b.id}"]`;
     rules += `:is(${sel}),:is(${sel}) *{font-family:${stack}!important}`;
   }
+  if (project.blocks.some(b => b.cta && b.enabled)) rules += '[data-pb-cta]{pointer-events:auto!important;cursor:pointer}';
   const style = doc.createElement('style');
   style.id = 'studio-import-overrides';
   style.textContent = rules + importPositionCSS(project);
@@ -815,6 +835,22 @@ export function importedDocument(project, assets, { positionCSS, preview = false
     doc.head.append(combined);
   } else {
     unwrapLooseText(doc, project);
+    if (doc.querySelector('[data-pb-cta]')) {
+      // Elements made clickable in PB open the store like the creative's own CTA button.
+      const own = storeLinksIn(html),
+        sc = doc.createElement('script');
+      sc.id = 'pb-cta-runtime';
+      sc.textContent =
+        '(function(){var I=' +
+        JSON.stringify(safeLink(project.linkIos) || own.ios || safeLink(project.linkAndroid) || own.android) +
+        ',A=' +
+        JSON.stringify(safeLink(project.linkAndroid) || own.android || safeLink(project.linkIos) || own.ios) +
+        ';var busy=0;document.addEventListener("click",function(e){var t=e.target&&e.target.closest&&e.target.closest("[data-pb-cta]");if(!t)return;' +
+        'if(typeof window.handleCTA==="function"){window.handleCTA();return}if(busy)return;busy=1;setTimeout(function(){busy=0},1500);' +
+        'var u=/android/i.test(navigator.userAgent)?A:I;try{if(window.mraid&&typeof mraid.open==="function"){mraid.open(u);return}}catch(x){}' +
+        'try{var w=window.open(u,"_blank");if(!w)location.href=u}catch(x){location.href=u}},false)})();';
+      doc.body.append(sc);
+    }
     if (linkRouter) {
       const sc = doc.createElement('script');
       sc.id = 'pb-store-links';
@@ -1314,4 +1350,51 @@ export function addMusicBlocks(project, assets) {
     added = true;
   }
   return added;
+}
+
+// Size of a picture from the first bytes of its data (PNG, GIF, JPEG, WebP), without loading it.
+function imageSize(data) {
+  const m = /^data:[^,]*;base64,(.*)$/.exec(String(data || ''));
+  if (!m) return null;
+  let bin;
+  try {
+    const chunk = m[1].slice(0, 120000);
+    bin = atob(chunk.slice(0, chunk.length - (chunk.length % 4)));
+  } catch {
+    return null;
+  }
+  const b = i => bin.charCodeAt(i) & 255,
+    be16 = i => (b(i) << 8) | b(i + 1),
+    be32 = i => ((b(i) << 24) | (b(i + 1) << 16) | (b(i + 2) << 8) | b(i + 3)) >>> 0,
+    le16 = i => b(i) | (b(i + 1) << 8);
+  if (bin.startsWith('\x89PNG')) return { w: be32(16), h: be32(20) };
+  if (bin.startsWith('GIF')) return { w: le16(6), h: le16(8) };
+  if (bin.startsWith('RIFF') && bin.slice(8, 12) === 'WEBP') {
+    const kind = bin.slice(12, 16);
+    if (kind === 'VP8X') return { w: 1 + (b(24) | (b(25) << 8) | (b(26) << 16)), h: 1 + (b(27) | (b(28) << 8) | (b(29) << 16)) };
+    if (kind === 'VP8L') {
+      const v = b(21) | (b(22) << 8) | (b(23) << 16) | (b(24) << 24);
+      return { w: (v & 0x3fff) + 1, h: ((v >> 14) & 0x3fff) + 1 };
+    }
+    if (kind === 'VP8 ') return { w: le16(26) & 0x3fff, h: le16(28) & 0x3fff };
+  }
+  if (b(0) === 0xff && b(1) === 0xd8) {
+    for (let i = 2; i < bin.length - 9; ) {
+      if (b(i) !== 0xff) {
+        i++;
+        continue;
+      }
+      const mk = b(i + 1);
+      if (mk >= 0xc0 && mk <= 0xcf && ![0xc4, 0xc8, 0xcc].includes(mk)) return { w: be16(i + 7), h: be16(i + 5) };
+      i += 2 + be16(i + 2);
+    }
+  }
+  return null;
+}
+// A weightless transparent picture with the same proportions (keeps the layout of a hidden picture).
+function placeholderFor(asset) {
+  const d = imageSize(asset?.data);
+  return d && d.w > 0 && d.h > 0
+    ? `data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20width=%27${d.w}%27%20height=%27${d.h}%27/%3E`
+    : 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 }
