@@ -1,0 +1,7 @@
+node_modules
+test-results
+workspace
+_updates
+_designs
+.git
+tests

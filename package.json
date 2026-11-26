@@ -1,0 +1,24 @@
+{
+  "name": "playable-studio",
+  "version": "0.15.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:all": "node tests/run-all.mjs",
+    "test:browser": "node tests/browser.mjs",
+    "test:interaction": "node tests/interaction.mjs",
+    "test:rulers": "node tests/rulers.mjs",
+    "test:variations": "node tests/variations.mjs",
+    "test:import": "node tests/html-import.mjs",
+    "screens": "node tests/screens.mjs",
+    "format": "npx prettier@3 --write \"app/*.{js,html,css}\" \"tests/*.mjs\" server.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "fflate": "0.8.3",
+    "lightningcss-wasm": "1.33.0",
+    "playwright": "^1.56.0"
+  }
+}

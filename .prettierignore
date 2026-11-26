@@ -1,0 +1,4 @@
+app/vendor/
+node_modules/
+test-results/
+app/seed.json

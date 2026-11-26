@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="darkreader-lock" />
+    <title>PB — конструктор плейблів</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body class="choosing">
+    <header class="topbar">
+      <button class="brand" id="brandHome" aria-label="PB — на головний екран" title="PB — на головний екран">
+        <span class="brand-mark">PB</span>
+      </button>
+      <div class="project-name">
+        <input id="projectName" aria-label="Назва варіації" maxlength="90" /><span id="saveStatus"
+          >Новий креатив ще не збережено</span
+        >
+      </div>
+      <nav class="variant-tabs" id="variantTabs" aria-label="Варіації креативу" hidden></nav>
+      <div class="top-actions">
+        <button id="undo" class="icon-btn" aria-label="Скасувати" title="Скасувати (Ctrl+Z)">↶</button
+        ><button id="redo" class="icon-btn" aria-label="Повторити" title="Повторити (Ctrl+Shift+Z)">↷</button
+        ><span class="action-separator"></span
+        ><button id="newProject" class="btn secondary" title="Новий креатив з новим номером">
+          Новий креатив</button
+        
+        ><button id="export" class="btn primary">Експорт HTML</button>
+      </div>
+    </header>
+    <section class="chooser" id="chooser">
+      <div class="chooser-top">
+        <div>
+          <button class="back-link" id="chooserBack" hidden>← Інший продукт</button>
+          <h1 id="chooserTitle">Що робимо?</h1>
+          <p class="chooser-sub" id="chooserSub"></p>
+        </div>
+        <div class="chooser-actions">
+          <button class="btn secondary big" id="cancelChooser" hidden>Продовжити останній</button>
+        </div>
+      </div>
+      <div class="product-pick" id="productPick">
+        <button class="product-card fiction" data-picker-product="fiction">
+          <span class="product-mark" aria-hidden="true"></span><b>Fiction Me</b
+          ><span>Читалка: обкладинка і текст книги</span>
+        </button>
+        <button class="product-card cleaner" data-picker-product="cleaner">
+          <span class="product-mark" aria-hidden="true"></span><b>Cleaner</b
+          ><span>Банери, алерти, до / після</span>
+        </button>
+      </div>
+      <div class="composition-grid" id="compositionGrid" hidden></div>
+    </section>
+    <main class="workspace" id="editor" hidden>
+      <aside class="library">
+        <div class="composition-summary">
+          <span class="section-label" id="productLabel">FICTION ME</span>
+          <h2 id="layoutName">Картинка над текстом</h2>
+          <button class="btn secondary full-width" id="changeLayout">Змінити композицію</button>
+        </div>
+        <div id="libraryBody"></div>
+        <div class="library-foot">
+          <span id="storageNote">Версія 0.15.0</span>
+        </div>
+      </aside>
+      <section class="canvas-area">
+        <div class="canvas-toolbar">
+          <div class="orientation-switch mode-switch" aria-label="Режим preview">
+            <button id="modeEdit" class="active" title="Клік по елементу в preview — редагування">Редагувати</button><button id="modePlay" title="Перевірка: креатив працює як на телефоні — анімації, скрол, кліки, скрипти">Тест</button>
+          </div>
+          <div class="orientation-switch" aria-label="Орієнтація">
+            <button id="portrait" class="active">Портрет</button><button id="landscape">Ландшафт</button>
+          </div>
+          <label class="device-control"
+            ><span>Екран</span
+            ><select id="device" aria-label="Розмір preview">
+              <option value="393,852">393 × 852</option>
+              <option value="320,480">320 × 480</option>
+              <option value="320,568">320 × 568</option>
+              <option value="360,640">360 × 640</option>
+              <option value="375,667">375 × 667</option>
+              <option value="390,844">390 × 844</option>
+              <option value="412,915">412 × 915</option>
+              <option value="430,932">430 × 932</option>
+            </select></label
+          ><label class="zoom-control"
+            ><span>Масштаб</span
+            ><select id="previewZoom" aria-label="Масштаб preview">
+              <option value="fit">Вписати</option>
+              <option value="1">100%</option>
+              <option value="0.75">75%</option>
+              <option value="0.5">50%</option>
+            </select></label
+          ><span id="zoom" class="zoom-value">100%</span>
+        </div>
+        <div class="canvas-heading">
+          <div><span class="live-dot"></span><span id="previewTitle">Попередній перегляд</span></div>
+          <span id="motionBadge" class="pill">Скрол обкладинки</span>
+        </div>
+        <div class="preview-area" id="previewArea">
+          <div class="preview-surface" id="previewSurface">
+            <div class="ruler horizontal-ruler" id="horizontalRuler" hidden aria-hidden="true"></div>
+            <div class="ruler vertical-ruler" id="verticalRuler" hidden aria-hidden="true"></div>
+            <div class="drag-readout" id="dragReadout" hidden aria-hidden="true"></div>
+            <div class="device-shell" id="deviceShell">
+              <div class="device-screen" id="deviceScreen">
+                <iframe
+                  id="preview"
+                  title="Попередній перегляд креативу"
+                  sandbox="allow-scripts allow-same-origin"
+                ></iframe>
+                <iframe
+                  id="playFrame"
+                  title="Плейбл у роботі"
+                  sandbox="allow-scripts"
+                  hidden
+                ></iframe>
+              </div>
+            </div>
+          </div>
+          <div id="previewState" class="preview-state" role="status">
+            <span>Завантаження preview…</span
+            ><button class="small-btn" id="retryPreview" hidden>Повторити</button>
+          </div>
+        </div>
+        <div id="exportPreviewNotice" class="notice export-preview-notice" hidden>
+          Перегляд стиснутих асетів експорту
+          <button id="returnOriginal" class="text-btn">Повернутися до редагування</button>
+        </div>
+        <div class="preview-actions">
+          <button id="editPositions" class="text-btn" aria-pressed="false" title="Тягни елемент, щоб посунути; тягни квадратики по краях, щоб змінити розмір">Рухати і розтягувати</button
+          ><button id="restart" class="text-btn">↻ Перезапустити</button
+          ><button id="soundToggle" class="text-btn" aria-pressed="false">Звук вимкнено</button
+          ><button id="screenshot" class="text-btn" title="PNG екрана креативу (2×): файл завантажиться і скопіюється — встав у борду Cmd/Ctrl+V">Скріншот ↓</button
+          ><a
+            id="standalonePreview"
+            class="text-btn"
+            href="#"
+            target="_blank"
+            rel="noopener"
+            aria-disabled="true"
+            >Відкрити preview ↗</a
+          >
+        </div>
+        <div class="canvas-bottom">
+          <span>Клік по елементу — редагування. Ще клік у те саме місце — елемент під ним.</span>
+        </div>
+        <div id="checkResults" class="check-results" hidden></div>
+      </section>
+      <aside class="inspector">
+        <div class="inspector-tabs">
+          <button data-inspector="element" class="active">Елемент</button
+          ><button data-inspector="layout">Оформлення</button
+          ><button data-inspector="settings">Експорт</button>
+        </div>
+        <div id="inspectorBody"></div>
+      </aside>
+    </main>
+    <div class="toast" id="toast" role="status" hidden></div>
+    <dialog id="projectDialog">
+      <div class="dialog-head">
+        <div>
+          <h2>Мої проєкти</h2>
+          <p class="muted">Креативи згруповані за номером. Відкрий варіацію або перенеси файл проєкту.</p>
+        </div>
+        <button class="icon-btn" id="closeProjects" aria-label="Закрити">×</button>
+      </div>
+      <div class="project-tools">
+        <button class="btn primary" id="duplicateProject">Дублювати поточний</button
+        ><button class="btn secondary" id="saveJSON">Завантажити проєкт</button
+        ><button class="btn secondary" id="importPlayableProject">Імпорт HTML / ZIP</button
+        ><button class="btn secondary" id="importJSON">Відкрити файл</button>
+      </div>
+      <div id="projectList"></div>
+    </dialog>
+    <dialog id="exportDialog">
+      <div class="dialog-head">
+        <h2 id="exportTitle">HTML готовий</h2>
+        <button id="closeExport" class="icon-btn" aria-label="Закрити експорт">×</button>
+      </div>
+      <h3 id="exportSummary"></h3>
+      <p id="exportDetail" class="muted"></p>
+      <button id="previewExport" class="btn primary">Перевірити стиснуті асети</button>
+    </dialog>
+    <input type="file" id="playableInput" accept=".html,.htm,.zip" hidden /><input
+      type="file"
+      id="assetInput"
+      multiple
+      hidden
+      accept="image/png,image/jpeg,image/webp,image/gif,audio/mpeg,audio/wav,audio/ogg,.ttf,.otf,.woff,.woff2"
+    /><input type="file" id="jsonInput" accept=".json" hidden />
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

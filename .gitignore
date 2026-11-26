@@ -1,0 +1,8 @@
+node_modules/
+test-results/
+.openai/*.tar.gz
+.openai/*.tar
+tests/_*.mjs
+workspace/
+_updates/
+_designs/
